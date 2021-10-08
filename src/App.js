@@ -10,8 +10,10 @@ import './App.css';
 import InfoBox from './InfoBox';
 import Map from './Map';
 import Table from './Table';
-import { sortData } from './util';
+import { sortData, prettyPrintStat } from './util';
 import LineGraph from "./LineGraph";
+import "leaflet/dist/leaflet.css";
+import numeral from "numeral";
 
 function App() {
 
@@ -19,8 +21,10 @@ function App() {
   const [country, setCountry] = useState('worldwide');
   const [countryInfo, setCountryInfo] = useState({});
   const [tableData, setTableData] = useState([]);
-
-
+  const [mapCenter, setMapCenter] = useState({ lat: 34.80746, lng: -40.4796 });
+  const [mapZoom, setMapZoom] = useState(3);
+  const [mapCountries, setMapCountries] = useState([]);
+  const [casesType, setCasesType] = useState("cases");
 
   //State = how to write a variable in REACT 
   //https://disease.sh/v3/covid-19/countries
@@ -46,6 +50,7 @@ function App() {
         }));
         const sortedData = sortData(data);
         setTableData(sortedData);
+        setMapCountries(data);
         setCountries(countries);
       });
     };
@@ -56,7 +61,7 @@ function App() {
   const onCountryChange = async (e) => {
     const countryCode = e.target.value;
 
-    setCountry(countryCode);
+    
 
   const url = countryCode === 'worldwide' 
   ? 'https://disease.sh/v3/covid-19/all' 
@@ -67,7 +72,13 @@ function App() {
   .then((data) => {
     setCountry(countryCode);
     setCountryInfo(data);
-    });
+
+    countryCode === "worldwide"
+          ? setMapCenter([34.80746, -40.4796])
+          : setMapCenter([data.countryInfo.lat, data.countryInfo.long]);
+          setMapZoom(4)//TODO: Check this zoom
+  });
+
   };
 
 
@@ -79,7 +90,7 @@ function App() {
     {/*Header */} 
     {/*Title + Select input dropdown field */}
     <div className="app__header">
-      <h1>COVID-19 Tracker</h1>
+      <h1>COVID-19 TRACKER</h1>
     <FormControl className="app__dropdown">
       <Select onChange={onCountryChange} variant="outlined" value={country} >
          {/*Loop through all the countries using jsx and show in dropdown */}
@@ -95,19 +106,36 @@ function App() {
      {/*InfoBoxes */} 
     <div className="app__stats">
       {/*InfoBoxs Corona Virus cases */}
-      <InfoBox title= "Coronavirus cases" cases={countryInfo.todayCases} total={countryInfo.cases}/>
+      <InfoBox 
+      isRed
+      active={casesType === "cases"}
+      onClick={(e) => setCasesType("cases")}
+      title= "Coronavirus cases" 
+      cases={prettyPrintStat(countryInfo.todayCases)} 
+      total={numeral(countryInfo.cases).format("0.0a")}/>
      
       {/*InfoBoxs Corona Virus recoveries */}
-      <InfoBox title= "Recovered"  cases={countryInfo.todayRecovered} total={countryInfo.recovered} />
+      <InfoBox 
+      active={casesType === "recovered"}
+      onClick={(e) => setCasesType("recovered")}
+      title= "Recovered"  
+      cases={prettyPrintStat(countryInfo.todayRecovered)} 
+      total={numeral(countryInfo.recovered).format("0.0a")}/>
      
       {/*InfoBoxs Corona Virus Deaths */}
-      <InfoBox title= "Deaths"  cases={countryInfo.todayDeaths} total={countryInfo.deaths}/>
+      <InfoBox
+      isRed 
+      active={casesType === "deaths"}
+      onClick={(e) => setCasesType("deaths")}
+      title= "Deaths"  
+      cases={prettyPrintStat(countryInfo.todayDeaths)} 
+      total={numeral(countryInfo.deaths).format("0.0a")}/>
     
     </div>
 
     {/*Map */}
-    <Map />
-     
+    <Map casesType={casesType} countries={mapCountries} center={mapCenter} zoom={mapZoom}/>
+
 
     </div>
     <Card className="app__right">
@@ -115,9 +143,9 @@ function App() {
         <h3>Live Cases by Country</h3>
           {/*Table */}  
           <Table countries={tableData} />
-        <h3>Worldwide new Cases</h3>
+        <h3 className="app__graphTitle">Worldwide new {casesType}</h3>
           {/*Graph */}
-          <LineGraph />
+          <LineGraph className="app__graph" casesType={casesType}/>
       </CardContent>
     </Card>
   </div>
